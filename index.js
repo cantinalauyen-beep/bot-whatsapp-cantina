@@ -1,48 +1,58 @@
-
 import express from "express";
-import fetch from "node-fetch";
+import axios from "axios";
 
 const app = express();
 app.use(express.json());
 
+// CONFIG Z-API
+const INSTANCE_ID = "3EB34863266AE1B6AC8C2E0261F7EA9D";
+const TOKEN = "BFEA077E388CB40BA8C9F017";
+
+// URL BASE DA Z-API
+const ZAPI_URL = `https://api.z-api.io/instances/${INSTANCE_ID}/token/${TOKEN}`;
+
+// ROTA DO WEBHOOK
 app.post("/webhook", async (req, res) => {
-  console.log("Webhook recebido:", req.body);
+    console.log("📩 Webhook recebido:", req.body);
 
-  const body = req.body;
+    const phone = req.body.phone;
+    const message =
+        req.body.text?.body ||
+        req.body.message ||
+        req.body.body ||
+        "";
 
-  // Pega número e texto corretamente
-  const phone = body.phone;
-  const message = body.text;
+    if (!phone) {
+        console.log("❗ Nenhum telefone detectado no webhook");
+        return res.sendStatus(200);
+    }
 
-  // Se não tiver texto, ignora
-  if (!message) {
-    console.log("Mensagem sem texto. Ignorando.");
-    return res.sendStatus(200);
-  }
+    console.log("📲 Mensagem recebida de:", phone);
+    console.log("📝 Conteúdo:", message);
 
-  console.log(`Mensagem recebida de ${phone}: ${message}`);
+    // Mensagem de teste automática
+    const reply = "Olá! Recebi sua mensagem com sucesso. Seu bot está funcionando!";
 
-  // Resposta simples para testar
-  await sendMessage(phone, "Recebi sua mensagem! O bot está funcionando 🚀");
+    try {
+        const response = await axios.post(
+            `${ZAPI_URL}/send-text`,
+            {
+                phone: phone,
+                message: reply
+            }
+        );
 
-  res.sendStatus(200);
+        console.log("✅ Mensagem enviada pela Z-API:", response.data);
+    } catch (error) {
+        console.error("❌ Erro ao enviar mensagem:", error.response?.data || error);
+    }
+
+    res.sendStatus(200);
 });
 
-// ----- Função para enviar mensagens -----
-async function sendMessage(phone, text) {
-  try {
-    await fetch("https://wpp-store-api.onrender.com/api/sendMessage", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        number: phone,
-        text: text
-      }),
-    });
-    console.log("Mensagem enviada!");
-  } catch (err) {
-    console.error("Erro ao enviar mensagem:", err);
-  }
-}
+// PORTA DO RENDER
+const PORT = process.env.PORT || 10000;
+app.listen(PORT, () => {
+    console.log(`🚀 Cantina bot rodando na porta ${PORT}`);
+});
 
-app.listen(10000, () => console.log("Cantina bot running"));
